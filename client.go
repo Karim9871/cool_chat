@@ -32,7 +32,9 @@ func sendMessage(connection net.Conn) {
 
 func main() {
 
-	connection, err := net.Dial("tcp", "localhost:9000")
+	address:=string(os.Args[1])
+
+	connection, err := net.Dial("tcp", address)
 
 	if err != nil {
 		fmt.Println("Error: " + err.Error())

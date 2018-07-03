@@ -6,7 +6,14 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
+	"sync"
 )
+
+type Users struct {
+	sync.Mutex
+	data map[net.Conn]User
+}
 
 type User struct {
 	Name   string
@@ -55,7 +62,7 @@ func (cs *ChatServer) Run() {
 	}
 }
 
-func handleConn(chatServer *ChatServer, conn net.Conn) {
+func handleConn(chatServer *ChatServer, conn net.Conn, users *Users) {
 	defer conn.Close()
 
 	io.WriteString(conn, "Enter your Username:")
@@ -66,6 +73,11 @@ func handleConn(chatServer *ChatServer, conn net.Conn) {
 		Name:   scanner.Text(),
 		Output: make(chan Message, 10),
 	}
+
+	users.Lock()
+	users.data[conn] = user
+	users.Unlock()
+
 	chatServer.Join <- user
 	defer func() {
 		chatServer.Leave <- user
@@ -91,7 +103,10 @@ func handleConn(chatServer *ChatServer, conn net.Conn) {
 }
 
 func main() {
-	server, err := net.Listen("tcp", ":9000")
+	var users Users
+	users.data=make(map[net.Conn]User)
+	address := string(os.Args[1])
+	server, err := net.Listen("tcp", address)
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
@@ -110,6 +125,6 @@ func main() {
 		if err != nil {
 			log.Fatalln(err.Error())
 		}
-		go handleConn(chatServer, conn)
+		go handleConn(chatServer, conn, &users)
 	}
 }
